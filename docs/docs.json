@@ -115,6 +115,7 @@
             "pages": [
               "base-chain/node-operators/run-a-base-node",
               "base-chain/node-operators/performance-tuning",
+              "base-chain/node-operators/proving-blocks",
               "base-chain/node-operators/snapshots",
               "base-chain/node-operators/troubleshooting"
             ]

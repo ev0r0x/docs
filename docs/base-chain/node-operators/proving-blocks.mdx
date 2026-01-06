@@ -1,0 +1,136 @@
+---
+title: 'Running a Proofs Node'
+description: How to run an op-reth node with proofs history enabled for block proving and execution witnesses.
+---
+
+This guide covers running a [forked op-reth node](https://github.com/op-rs/op-reth) with Bounded History Sidecar architecture for historical state proofs specifically designed for block proving. This is useful for teams building validity proofs, ZK systems, or applications that need trie preimages for block execution.
+
+<Info>
+This setup is separate from the [standard Base node](/base-chain/node-operators/run-a-base-node) which uses `op-geth`. 
+
+This specific `op-reth` client provides an extension that enables proofs history storage which is not available in the standard node configuration.
+</Info>
+
+## Use Cases
+
+- Generate execution witnesses for arbitrary blocks
+- Retrieve trie preimages needed for block execution
+- Execute payloads from arbitrary parent blocks
+- Build validity proof systems on Base
+
+## Prerequisites
+
+- Familiarity with [running a Base node](/base-chain/node-operators/run-a-base-node)
+- Rust toolchain installed
+- Hardware meeting [node requirements](/base-chain/node-operators/performance-tuning#hardware)
+
+<Note>
+Running a proofs node requires additional storage and compute compared to a standard node. Plan for longer sync times and higher resource usage.
+</Note>
+
+## Setup
+
+<Steps>
+<Step title="Clone and build op-reth">
+
+Clone the Reth repository and compile with OP Stack support:
+
+```bash Terminal
+git clone https://github.com/op-rs/op-reth.git && \
+cd op-reth && \
+make build-op
+```
+
+For detailed build instructions, see the [Reth documentation](https://reth.rs/run/optimism.html).
+
+</Step>
+
+<Step title="Initialize proofs history">
+
+<Note>
+If this is your first time running the node, you may need to run `init` to initialize a database from genesis.
+
+```bash
+op-reth init
+```
+
+</Note>
+
+Initialize the proofs database:
+
+```bash
+op-reth initialize-op-proofs --proofs-history.storage-path <PROOFS_HISTORY_STORAGE_PATH>
+```
+
+This prepares the node to store the trie preimage data needed for proving.
+
+</Step>
+
+<Step title="Run with proofs history enabled">
+
+Start the node with the `--proofs-history` flag:
+
+```bash
+op-reth node --proofs-history --proofs-history.storage-path <PROOFS_HISTORY_STORAGE_PATH>
+```
+
+This enables the debug RPC methods for retrieving execution witnesses.
+
+</Step>
+</Steps>
+
+## RPC Methods
+
+Once your proofs node is running, you can use these debug methods:
+
+### `debug_executionWitness`
+
+Returns the trie preimages needed to execute a specific block.
+
+```bash
+curl -X POST http://localhost:8545 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "debug_executionWitness",
+    "params": ["0x123456"],
+    "id": 1
+  }'
+```
+
+**Parameters:**
+- `block_num_or_hash` - Block number (hex) or block hash
+
+**Returns:** Trie preimages required to execute the block (equivalent to calling `debug_dbGet` for each preimage individually).
+
+### `debug_executePayload`
+
+Executes an arbitrary block from an arbitrary parent, useful for blocks not yet included in the chain.
+
+```bash
+curl -X POST http://localhost:8545 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "debug_executePayload",
+    "params": [<payload_attributes>],
+    "id": 1
+  }'
+```
+
+**Parameters:**
+- `payload_attributes` - The payload attributes object for the block to execute
+
+**Returns:** Trie preimages for the executed payload.
+
+## Sync Time and Costs
+
+<Warning>
+Proofs nodes require significantly more time and resources to sync compared to standard nodes:
+
+- **Sync time**: Expect days to weeks depending on hardware
+- **Storage**: Additional overhead for proofs history data
+- **Compute**: Higher CPU usage during sync and when serving proof requests
+</Warning>
+
+Consider [restoring from a snapshot](/base-chain/node-operators/snapshots) to reduce initial sync time.
