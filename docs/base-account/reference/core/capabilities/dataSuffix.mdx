@@ -1,0 +1,110 @@
+---
+title: "dataSuffix"
+description: "Append arbitrary data to transaction calldata for attribution tracking"
+---
+
+Defined in [ERC-8021](https://eip.tools/eip/8021)
+
+<Info>
+The dataSuffix capability allows apps to append arbitrary hex-encoded bytes to transaction calldata. This enables attribution tracking, allowing platforms to identify which app originated a transaction and distribute rewards accordingly.
+</Info>
+
+## Parameters
+
+<ParamField body="value" type="`0x${string}`" required>
+Hex-encoded bytes to append to the transaction calldata. This value is appended to the end of the calldata for each call in the batch.
+</ParamField>
+
+<ParamField body="optional" type="boolean">
+When `true`, the wallet may ignore the capability if it doesn't support it. When `false` or omitted, the wallet must support the capability or reject the request.
+</ParamField>
+
+## Type Definition
+
+```typescript
+type DataSuffixCapability = {
+  value: `0x${string}`;
+  optional?: boolean;
+}
+```
+
+## Example Usage
+
+```typescript Example
+const result = await provider.request({
+  method: "wallet_sendCalls",
+  params: [{
+    version: "1.0",
+    chainId: "0x2105", // Base mainnet
+    from: userAddress,
+    calls: [
+      {
+        to: contractAddress,
+        value: "0x0",
+        data: encodedFunctionCall
+      }
+    ],
+    capabilities: {
+      dataSuffix: {
+        value: "0x1234567890abcdef1234567890abcdef", // Your attribution suffix
+        optional: true // Wallet can proceed even if it doesn't support dataSuffix
+      }
+    }
+  }]
+});
+```
+
+## Primary Use Case: Builder Codes
+
+The primary use case for `dataSuffix` is [Builder Codes](/base-chain/quickstart/builder-codes) attribution. Builder Codes are unique identifiers that allow apps to receive attribution for onchain activity they generate.
+
+When you register on [base.dev](https://base.dev), you receive a Builder Code that can be encoded as a `dataSuffix`.
+
+```typescript
+// Example: Using Builder Code with dataSuffix
+const builderCodeSuffix = "0x..."; // Provided by base.dev
+
+await provider.request({
+  method: "wallet_sendCalls",
+  params: [{
+    version: "1.0",
+    chainId: "0x2105",
+    from: userAddress,
+    calls: [{
+      to: contractAddress,
+      value: "0x0",
+      data: swapCallData
+    }],
+    capabilities: {
+      dataSuffix: {
+        value: builderCodeSuffix
+      }
+    }
+  }]
+});
+```
+
+For complete Builder Codes integration instructions, see the [Builder Codes guide](/base-chain/quickstart/builder-codes).
+
+## How It Works
+
+When a wallet receives a `dataSuffix` capability, the suffix is appended to `userOp.callData`. The suffix bytes are concatenated directly to the end of the calldata, making them available for onchain parsing and attribution.
+
+## Best Practices
+
+1. **Use with Builder Codes**: Register on [base.dev](https://base.dev) to get your Builder Code for proper attribution
+2. **Set optional appropriately**: Use `optional: true` if your app can function without attribution tracking
+3. **Keep suffixes small**: Larger suffixes increase gas costs
+
+<Info>
+For wallet developers implementing dataSuffix support, see the [For Wallet Developers](/base-chain/quickstart/builder-codes#for-wallet-developers) section in the Builder Codes guide.
+</Info>
+
+## Related Capabilities
+
+- [paymasterService](/base-account/reference/core/capabilities/paymasterService) - Combine with sponsored transactions
+- [atomic](/base-account/reference/core/capabilities/atomic) - Use with atomic batch transactions
+
+import PolicyBanner from "/snippets/PolicyBanner.mdx";
+
+<PolicyBanner />
